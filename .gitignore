@@ -1,0 +1,11 @@
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+server.log
+*.db
+ai-search-service/static/images/*.jpg
+.env
+.DS_Store
+/tmp/
+.claude/

@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>StyleAI — AI-Powered Fashion Search</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    margin: 0;
+    background: #0f0f14;
+    color: #eee;
+    overflow-x: hidden;
+  }
+
+  /* ---------- Navbar ---------- */
+  .navbar {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 24px;
+    background: rgba(15,15,20,0.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .navbar .logo { font-weight: 800; font-size: 18px; }
+  .navbar .logo span { color: #ee0979; }
+  .navbar .icons { display: flex; gap: 18px; align-items: center; }
+  .icon-btn {
+    position: relative; background: none; border: none; color: #eee;
+    font-size: 20px; cursor: pointer; padding: 4px;
+  }
+  .icon-badge {
+    position: absolute; top: -4px; right: -6px;
+    background: #ee0979; color: #fff; font-size: 10px; font-weight: 700;
+    border-radius: 50%; width: 16px; height: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    position: relative;
+    padding: 60px 24px 50px;
+    text-align: center;
+    background: linear-gradient(-45deg, #ff6a00, #ee0979, #6a11cb, #2575fc);
+    background-size: 400% 400%;
+    animation: gradientShift 14s ease infinite;
+    overflow: hidden;
+  }
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .floaty {
+    position: absolute;
+    font-size: 38px;
+    opacity: 0.35;
+    animation: floatUp 9s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+    10%  { opacity: 0.35; }
+    90%  { opacity: 0.35; }
+    100% { transform: translateY(-10vh) rotate(360deg); opacity: 0; }
+  }
+
+  .hero h1 {
+    font-size: 44px;
+    margin: 0 0 6px;
+    text-shadow: 0 4px 18px rgba(0,0,0,0.35);
+    letter-spacing: -0.5px;
+    animation: popIn 0.6s ease;
+  }
+  .hero h1 span {
+    background: linear-gradient(90deg, #fff, #ffe27a, #fff);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shine 3s linear infinite;
+  }
+  @keyframes shine { to { background-position: 200% center; } }
+  @keyframes popIn {
+    0% { transform: scale(0.85); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  .hero p.sub { margin: 0 0 28px; font-size: 15px; opacity: 0.9; }
+
+  .search-bar {
+    position: relative;
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+    background: rgba(255,255,255,0.97);
+    border-radius: 14px;
+    padding: 8px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+    animation: slideUp 0.6s ease;
+  }
+  @keyframes slideUp {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  .search-bar input {
+    flex: 1; border: none; outline: none; padding: 12px 14px;
+    font-size: 15px; border-radius: 10px; color: #222; background: transparent;
+  }
+  .search-bar button {
+    border: none; border-radius: 10px; padding: 12px 22px;
+    background: linear-gradient(135deg, #ff6a00, #ee0979);
+    color: #fff; font-weight: 600; font-size: 15px; cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .search-bar button:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(238,9,121,0.5); }
+  .search-bar button:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+  .chips { margin-top: 16px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 13px;
+    cursor: pointer; transition: background 0.2s; backdrop-filter: blur(4px);
+  }
+  .chip:hover { background: rgba(255,255,255,0.35); }
+
+  /* ---------- Results ---------- */
+  .container { max-width: 1100px; margin: 0 auto; padding: 30px 24px 60px; }
+  .toolbar {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+  }
+  .meta { color: #aaa; font-size: 14px; }
+  .sort-select {
+    background: #1b1b22; color: #eee; border: 1px solid #333;
+    border-radius: 8px; padding: 7px 10px; font-size: 13px; cursor: pointer;
+  }
+
+  .spinner {
+    width: 34px; height: 34px;
+    border: 4px solid rgba(255,255,255,0.15);
+    border-top-color: #ee0979;
+    border-radius: 50%;
+    margin: 30px auto;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 18px;
+  }
+  .card {
+    background: #1b1b22;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+    animation: cardIn 0.45s ease forwards;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    cursor: pointer;
+    position: relative;
+  }
+  .card:hover { transform: translateY(-6px) scale(1.02); box-shadow: 0 12px 28px rgba(238,9,121,0.25); }
+  @keyframes cardIn { to { opacity: 1; transform: translateY(0) scale(1); } }
+
+  .card .img-wrap { position: relative; }
+  .card img { width: 100%; height: 230px; object-fit: cover; display: block; background: #2a2a33; }
+
+  .badge-discount {
+    position: absolute; top: 8px; left: 8px;
+    background: #4ade80; color: #003d1a; font-size: 11px; font-weight: 800;
+    padding: 3px 8px; border-radius: 6px;
+  }
+  .wishlist-btn {
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(0,0,0,0.5); border: none; border-radius: 50%;
+    width: 30px; height: 30px; font-size: 15px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.15s;
+  }
+  .wishlist-btn:hover { transform: scale(1.15); }
+  .stock-badge {
+    position: absolute; bottom: 8px; left: 8px;
+    font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px;
+  }
+  .stock-low { background: #ef4444; color: #fff; }
+  .stock-ok { background: rgba(0,0,0,0.55); color: #4ade80; }
+
+  .card-body { padding: 12px; }
+  .card-body .brand { font-size: 11px; color: #ee0979; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+  .card-body .name { font-weight: 600; margin: 4px 0; font-size: 14px; color: #f2f2f2; }
+  .card-body .rating { font-size: 12px; color: #ffd93d; margin-bottom: 4px; }
+  .card-body .rating .count { color: #888; margin-left: 4px; }
+  .card-body .price-row { display: flex; align-items: baseline; gap: 8px; }
+  .card-body .price { color: #4ade80; font-weight: 700; font-size: 15px; }
+  .card-body .mrp { color: #777; font-size: 12px; text-decoration: line-through; }
+  .card-body .tags { font-size: 12px; color: #999; margin-top: 5px; }
+  .add-cart-btn {
+    margin-top: 8px; width: 100%; padding: 7px; font-size: 12px; font-weight: 700;
+    border: none; border-radius: 8px; background: rgba(238,9,121,0.15);
+    color: #ee0979; cursor: pointer; transition: background 0.2s;
+  }
+  .add-cart-btn:hover { background: rgba(238,9,121,0.3); }
+
+  .empty, .placeholder { text-align: center; color: #777; margin-top: 50px; font-size: 15px; }
+  .placeholder .big-emoji { font-size: 50px; display: block; margin-bottom: 10px; animation: bounce 2s ease infinite; }
+  @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+  /* ---------- Testimonials ---------- */
+  .testimonials { background: #15151c; padding: 50px 24px 60px; }
+  .testimonials h2 { text-align: center; margin: 0 0 6px; font-size: 26px; }
+  .testimonials .sub2 { text-align: center; color: #888; font-size: 13px; margin: 0 0 30px; }
+  .t-grid {
+    max-width: 1100px; margin: 0 auto;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px;
+  }
+  .t-card {
+    background: #1f1f28; border-radius: 14px; padding: 20px;
+    opacity: 0; transform: translateY(16px);
+    animation: cardIn 0.5s ease forwards;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+  .t-card:hover { transform: translateY(-4px); box-shadow: 0 10px 24px rgba(0,0,0,0.4); }
+  .t-card .avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, #ff6a00, #ee0979);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px; margin-bottom: 12px;
+  }
+  .t-card .quote { font-size: 14px; color: #ddd; line-height: 1.5; margin-bottom: 14px; }
+  .t-card .who { font-size: 13px; color: #999; font-weight: 600; }
+  .t-card .who span { color: #ee0979; }
+  .t-card .stars { color: #ffd93d; font-size: 13px; margin-bottom: 8px; }
+  .disclaimer { text-align: center; color: #555; font-size: 11px; margin-top: 24px; }
+
+  /* ---------- Footer ---------- */
+  .footer {
+    background: #0a0a0d; padding: 36px 24px; text-align: center;
+    color: #666; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .footer .f-links { display: flex; gap: 18px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .footer .f-links a { color: #aaa; text-decoration: none; font-size: 13px; }
+  .footer .f-links a:hover { color: #ee0979; }
+  .footer .f-badge {
+    display: inline-block; margin-top: 10px; padding: 5px 12px;
+    background: rgba(74,222,128,0.12); color: #4ade80; border-radius: 20px; font-size: 11px;
+  }
+
+  /* ---------- Product modal ---------- */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    display: none; align-items: center; justify-content: center;
+    z-index: 100; animation: fadeIn 0.2s ease; padding: 20px;
+  }
+  .overlay.open { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .modal {
+    background: #1b1b22; border-radius: 16px; max-width: 640px; width: 100%;
+    display: flex; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: modalIn 0.25s ease;
+  }
+  @keyframes modalIn {
+    from { transform: translateY(20px) scale(0.97); opacity: 0; }
+    to { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  .modal img { width: 45%; object-fit: cover; }
+  .modal-body { padding: 24px; flex: 1; position: relative; }
+  .modal-body .close { position: absolute; top: 14px; right: 16px; cursor: pointer; color: #999; font-size: 20px; background: none; border: none; }
+  .modal-body .brand { font-size: 12px; color: #ee0979; text-transform: uppercase; font-weight: 700; }
+  .modal-body .name { font-size: 20px; font-weight: 700; margin: 6px 0; }
+  .modal-body .rating { font-size: 13px; color: #ffd93d; margin-bottom: 8px; }
+  .modal-body .rating .count { color: #888; margin-left: 4px; }
+  .modal-body .price-row { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .modal-body .price { color: #4ade80; font-weight: 700; font-size: 18px; }
+  .modal-body .mrp { color: #777; font-size: 13px; text-decoration: line-through; }
+  .modal-body .discount-tag { color: #4ade80; font-size: 12px; font-weight: 700; }
+  .modal-body .tags { font-size: 13px; color: #999; margin-bottom: 14px; }
+  .modal-body .desc { font-size: 14px; color: #ccc; line-height: 1.6; }
+  .modal-body .stock-line { font-size: 12px; margin-top: 10px; font-weight: 700; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions button {
+    flex: 1; padding: 12px; border: none; border-radius: 10px;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .buy { background: linear-gradient(135deg, #ff6a00, #ee0979); color: #fff; }
+  .wish { background: rgba(255,255,255,0.08); color: #eee; }
+  @media (max-width: 540px) {
+    .modal { flex-direction: column; }
+    .modal img { width: 100%; height: 220px; }
+  }
+
+  /* ---------- Cart drawer ---------- */
+  .cart-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    display: none; z-index: 90;
+  }
+  .cart-overlay.open { display: block; }
+  .cart-drawer {
+    position: fixed; top: 0; right: -380px; width: 360px; height: 100%;
+    background: #1b1b22; z-index: 91; padding: 20px;
+    transition: right 0.3s ease; display: flex; flex-direction: column;
+    box-shadow: -10px 0 30px rgba(0,0,0,0.4);
+  }
+  .cart-drawer.open { right: 0; }
+  .cart-drawer h3 { margin: 0 0 16px; display: flex; justify-content: space-between; align-items: center; }
+  .cart-drawer h3 button { background: none; border: none; color: #999; font-size: 20px; cursor: pointer; }
+  .cart-items { flex: 1; overflow-y: auto; }
+  .cart-item { display: flex; gap: 10px; margin-bottom: 14px; align-items: center; }
+  .cart-item img { width: 50px; height: 56px; object-fit: cover; border-radius: 6px; }
+  .cart-item .ci-info { flex: 1; font-size: 13px; }
+  .cart-item .ci-info .ci-name { font-weight: 600; }
+  .cart-item .ci-info .ci-price { color: #4ade80; }
+  .cart-item button { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 16px; }
+  .cart-empty { text-align: center; color: #777; margin-top: 40px; }
+  .cart-total {
+    border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px; margin-top: 10px;
+    display: flex; justify-content: space-between; font-weight: 700;
+  }
+  .cart-checkout {
+    margin-top: 14px; width: 100%; padding: 12px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #ff6a00, #ee0979); color: #fff; font-weight: 700; cursor: pointer;
+  }
+
+  /* ---------- Checkout modal ---------- */
+  .checkout-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center;
+    z-index: 110; padding: 20px;
+  }
+  .checkout-overlay.open { display: flex; }
+  .checkout-box {
+    background: #1b1b22; border-radius: 18px; padding: 28px;
+    max-width: 380px; width: 100%; text-align: center;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: modalIn 0.25s ease;
+  }
+  .checkout-box .co-close { position: absolute; top: 14px; right: 18px; background: none; border: none; color: #999; font-size: 20px; cursor: pointer; }
+  .checkout-box h3 { margin: 0 0 4px; }
+  .checkout-box .co-amount { color: #4ade80; font-weight: 800; font-size: 24px; margin-bottom: 18px; }
+  .pay-tabs { display: flex; gap: 8px; justify-content: center; margin-bottom: 18px; }
+  .pay-tab {
+    flex: 1; padding: 10px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 13px;
+    border: 2px solid transparent; transition: border 0.2s;
+  }
+  .pay-tab.phonepe { background: #5f259f; color: #fff; }
+  .pay-tab.gpay { background: #fff; color: #4285f4; }
+  .pay-tab.active { border-color: #ee0979; }
+  .qr-box {
+    background: #fff; border-radius: 14px; padding: 14px; display: inline-block; margin-bottom: 16px;
+  }
+  .qr-box img { width: 200px; height: 200px; display: block; }
+  .co-waiting { color: #aaa; font-size: 13px; margin-bottom: 6px; }
+  .co-spinner {
+    width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.15);
+    border-top-color: #ee0979; border-radius: 50%; margin: 6px auto 14px;
+    animation: spin 0.8s linear infinite;
+  }
+  .co-demo-note { color: #555; font-size: 11px; margin-top: 6px; }
+  .co-success { display: none; }
+  .co-success .big-tick {
+    font-size: 60px; animation: tickPop 0.5s ease;
+  }
+  @keyframes tickPop {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .co-success h3 { margin: 10px 0 4px; color: #4ade80; }
+  .co-success .order-id { color: #888; font-size: 13px; margin-bottom: 16px; }
+  .co-success button {
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #ff6a00, #ee0979); color: #fff; font-weight: 700; cursor: pointer;
+  }
+
+  /* ---------- Auth ---------- */
+  .auth-btn {
+    background: linear-gradient(135deg, #ff6a00, #ee0979); color: #fff;
+    border: none; border-radius: 20px; padding: 7px 16px; font-size: 13px;
+    font-weight: 700; cursor: pointer;
+  }
+  .user-chip {
+    display: flex; align-items: center; gap: 8px; font-size: 13px;
+  }
+  .user-chip .admin-tag {
+    background: #ffd93d; color: #222; font-size: 10px; font-weight: 800;
+    padding: 2px 6px; border-radius: 6px;
+  }
+  .user-chip button {
+    background: none; border: 1px solid #444; color: #aaa; border-radius: 14px;
+    padding: 4px 10px; font-size: 12px; cursor: pointer;
+  }
+  .auth-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center;
+    z-index: 120; padding: 20px;
+  }
+  .auth-overlay.open { display: flex; }
+  .auth-box {
+    background: #1b1b22; border-radius: 16px; padding: 28px;
+    max-width: 360px; width: 100%; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    animation: modalIn 0.25s ease;
+  }
+  .auth-box .co-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: #999; font-size: 20px; cursor: pointer; }
+  .auth-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+  .auth-tab {
+    flex: 1; text-align: center; padding: 8px; border-radius: 8px; cursor: pointer;
+    font-weight: 700; font-size: 13px; color: #999; background: rgba(255,255,255,0.05);
+  }
+  .auth-tab.active { background: rgba(238,9,121,0.2); color: #ee0979; }
+  .auth-box input {
+    width: 100%; padding: 11px; margin-bottom: 12px; border-radius: 8px;
+    border: 1px solid #333; background: #111; color: #eee; font-size: 14px;
+  }
+  .auth-box button.submit {
+    width: 100%; padding: 12px; border: none; border-radius: 10px;
+    background: linear-gradient(135deg, #ff6a00, #ee0979); color: #fff; font-weight: 700; cursor: pointer;
+  }
+  .auth-error { color: #ef4444; font-size: 12px; margin-bottom: 10px; min-height: 14px; }
+  .auth-hint { color: #666; font-size: 11px; text-align: center; margin-top: 12px; }
+
+  .admin-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center; z-index: 120; padding: 20px;
+  }
+  .admin-overlay.open { display: flex; }
+  .admin-box {
+    background: #1b1b22; border-radius: 16px; padding: 26px;
+    max-width: 420px; width: 100%; max-height: 70vh; overflow-y: auto; position: relative;
+  }
+  .admin-box table { width: 100%; font-size: 13px; border-collapse: collapse; margin-top: 14px; }
+  .admin-box th, .admin-box td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #2a2a33; }
+  .admin-box th { color: #888; font-size: 11px; text-transform: uppercase; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    background: #1f1f28; color: #fff; padding: 12px 18px; border-radius: 10px;
+    font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: flex; align-items: center; gap: 8px;
+    animation: toastIn 0.3s ease, toastOut 0.3s ease 2.2s forwards;
+  }
+  @keyframes toastIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes toastOut { to { transform: translateY(20px); opacity: 0; } }
+</style>
+</head>
+<body>
+
+  <div class="navbar">
+    <div class="logo">Style<span>AI</span> 🤖</div>
+    <div class="icons">
+      <button class="icon-btn" onclick="toggleWishlistView()" title="Wishlist">
+        ❤️<span class="icon-badge" id="wishCount">0</span>
+      </button>
+      <button class="icon-btn" onclick="openCart()" title="Cart">
+        🛒<span class="icon-badge" id="cartCount">0</span>
+      </button>
+      <div id="authArea"></div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <span class="floaty" style="left:8%;  animation-delay:0s">👕</span>
+    <span class="floaty" style="left:22%; animation-delay:2s">👖</span>
+    <span class="floaty" style="left:40%; animation-delay:4s">✨</span>
+    <span class="floaty" style="left:60%; animation-delay:1s">🛍️</span>
+    <span class="floaty" style="left:78%; animation-delay:3s">👔</span>
+    <span class="floaty" style="left:90%; animation-delay:5s">⭐</span>
+
+    <h1>Style<span>AI</span> 🤖</h1>
+    <p class="sub">Fashion for everyone — type how you'd ask a friend, our local AI figures out the filters.</p>
+
+    <div class="search-bar">
+      <input id="query" type="text" placeholder="e.g. black mein M size dikhado jo 400 se 500 ke beech mai ho" />
+      <button id="searchBtn" onclick="search()">🔍 Search</button>
+    </div>
+
+    <div class="chips">
+      <div class="chip" onclick="quickSearch('black tshirt under 1000')">Black tshirt under ₹1000</div>
+      <div class="chip" onclick="quickSearch('grey shirt')">Grey shirt</div>
+      <div class="chip" onclick="quickSearch('red pants')">Red pants</div>
+      <div class="chip" onclick="quickSearch('Nike ke pants 1000 se 5000 ke beech')">Nike pants ₹1k–5k</div>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="toolbar">
+      <div class="meta" id="meta"></div>
+      <select class="sort-select" id="sortSelect" onchange="applySort()">
+        <option value="relevance">Sort: Relevance</option>
+        <option value="price_asc">Price: Low to High</option>
+        <option value="price_desc">Price: High to Low</option>
+        <option value="rating">Rating: High to Low</option>
+      </select>
+    </div>
+    <div id="spinnerBox"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
+    <div class="modal">
+      <img id="modalImg" src="" alt="" />
+      <div class="modal-body">
+        <button class="close" onclick="closeModal()">✕</button>
+        <div class="brand" id="modalBrand"></div>
+        <div class="name" id="modalName"></div>
+        <div class="rating" id="modalRating"></div>
+        <div class="price-row">
+          <div class="price" id="modalPrice"></div>
+          <div class="mrp" id="modalMrp"></div>
+          <div class="discount-tag" id="modalDiscount"></div>
+        </div>
+        <div class="tags" id="modalTags"></div>
+        <div class="desc" id="modalDesc"></div>
+        <div class="stock-line" id="modalStock"></div>
+        <div class="modal-actions">
+          <button class="wish" id="modalWishBtn" onclick="toggleWishlistFromModal()">🤍 Wishlist</button>
+          <button class="buy" onclick="addToCartFromModal()">🛒 Add to Cart</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
+  <div class="cart-drawer" id="cartDrawer">
+    <h3>Your Cart <button onclick="closeCart()">✕</button></h3>
+    <div class="cart-items" id="cartItems"></div>
+    <div id="cartFooter"></div>
+  </div>
+
+  <div class="checkout-overlay" id="checkoutOverlay">
+    <div class="checkout-box" style="position:relative;">
+      <button class="co-close" onclick="closeCheckout()">✕</button>
+
+      <div id="coPayView">
+        <h3>Scan & Pay</h3>
+        <div class="co-amount" id="coAmount">₹0</div>
+        <div class="pay-tabs">
+          <div class="pay-tab phonepe active" id="tabPhonepe" onclick="switchPayTab('phonepe')">📱 PhonePe</div>
+          <div class="pay-tab gpay" id="tabGpay" onclick="switchPayTab('gpay')">🟢 Google Pay</div>
+        </div>
+        <div class="qr-box"><img id="qrImg" src="" alt="Payment QR" /></div>
+        <div class="co-waiting">Waiting for payment...</div>
+        <div class="co-spinner"></div>
+        <div class="co-demo-note">Demo QR for portfolio project — no real payment is processed.</div>
+      </div>
+
+      <div id="coSuccessView" class="co-success">
+        <div class="big-tick">✅</div>
+        <h3>Order Successful!</h3>
+        <div class="order-id" id="orderIdText"></div>
+        <button onclick="closeCheckout()">Continue Shopping</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-box">
+      <button class="co-close" onclick="closeAuth()">✕</button>
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Login</div>
+        <div class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Sign Up</div>
+      </div>
+      <div class="auth-error" id="authError"></div>
+      <input id="authUsername" type="text" placeholder="Username" autocomplete="username" />
+      <input id="authPassword" type="password" placeholder="Password" autocomplete="current-password" />
+      <button class="submit" id="authSubmitBtn" onclick="submitAuth()">Login</button>
+      <div class="auth-hint">Demo project — admin login: <b>admin</b> / <b>admin</b></div>
+    </div>
+  </div>
+
+  <div class="admin-overlay" id="adminOverlay">
+    <div class="admin-box">
+      <button class="co-close" onclick="closeAdminPanel()">✕</button>
+      <h3>👑 Admin Panel — Registered Users</h3>
+      <table>
+        <thead><tr><th>Username</th><th>Role</th><th>Joined</th></tr></thead>
+        <tbody id="adminUsersBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="testimonials">
+    <h2>💬 What shoppers are saying</h2>
+    <p class="sub2">Real reactions, fictional shoppers — illustrative testimonials for this demo</p>
+    <div class="t-grid">
+      <div class="t-card" style="animation-delay:0.05s">
+        <div class="avatar">🧑🏽</div>
+        <div class="stars">⭐⭐⭐⭐⭐</div>
+        <div class="quote">"Bas type kiya 'black tshirt 1000 ke andar' aur exactly wahi mil gaya. Itna fast search maine kahin nahi dekha!"</div>
+        <div class="who">Aarav Mehta · <span>Mumbai</span></div>
+      </div>
+      <div class="t-card" style="animation-delay:0.15s">
+        <div class="avatar">👩🏽</div>
+        <div class="stars">⭐⭐⭐⭐⭐</div>
+        <div class="quote">"Hinglish mein search karne pe bhi samajh jaata hai — yeh sabse cool feature hai is platform ka."</div>
+        <div class="who">Priya Nair · <span>Bengaluru</span></div>
+      </div>
+      <div class="t-card" style="animation-delay:0.25s">
+        <div class="avatar">🧔🏽</div>
+        <div class="stars">⭐⭐⭐⭐</div>
+        <div class="quote">"Budget bata do, size bata do, AI khud filter laga deta hai. Shopping ka time aadha ho gaya."</div>
+        <div class="who">Rohan Kapoor · <span>Delhi</span></div>
+      </div>
+      <div class="t-card" style="animation-delay:0.35s">
+        <div class="avatar">👩🏻</div>
+        <div class="stars">⭐⭐⭐⭐⭐</div>
+        <div class="quote">"Pehle baar koi search bar hai jo actually samajhta hai main kya dhund rahi hoon."</div>
+        <div class="who">Sneha Reddy · <span>Hyderabad</span></div>
+      </div>
+    </div>
+    <p class="disclaimer">Illustrative testimonials for demo purposes — not real customer reviews.</p>
+  </div>
+
+  <div class="footer">
+    <div class="f-links">
+      <a href="#">About</a>
+      <a href="#">Contact</a>
+      <a href="#">Returns &amp; Exchange</a>
+      <a href="#">Privacy Policy</a>
+      <a href="https://github.com" target="_blank">GitHub</a>
+    </div>
+    <div>© 2026 StyleAI — Portfolio demo project. Not a real store.</div>
+    <div class="f-badge">⚡ Powered by local AI (Ollama) — zero API cost</div>
+  </div>
+
+  <div id="toastBox"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script>
+    let lastResults = [];
+    let currentModalProduct = null;
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    let wishlist = JSON.parse(localStorage.getItem('wishlist') || '[]');
+
+    function saveState() {
+      localStorage.setItem('cart', JSON.stringify(cart));
+      localStorage.setItem('wishlist', JSON.stringify(wishlist));
+      updateBadges();
+    }
+    function updateBadges() {
+      document.getElementById('cartCount').textContent = cart.length;
+      document.getElementById('wishCount').textContent = wishlist.length;
+    }
+
+    function showToast(msg) {
+      const box = document.getElementById('toastBox');
+      const el = document.createElement('div');
+      el.className = 'toast';
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 2500);
+    }
+
+    function quickSearch(q) {
+      document.getElementById('query').value = q;
+      search();
+    }
+
+    function fireConfetti() {
+      if (typeof confetti !== 'function') return;
+      confetti({
+        particleCount: 80, spread: 70, origin: { y: 0.3 },
+        colors: ['#ff6a00', '#ee0979', '#6a11cb', '#2575fc', '#4ade80'],
+      });
+    }
+
+    function stockLabel(stock) {
+      if (stock <= 0) return { text: 'Out of Stock', cls: 'stock-low' };
+      if (stock <= 5) return { text: `Only ${stock} left!`, cls: 'stock-low' };
+      return { text: 'In Stock', cls: 'stock-ok' };
+    }
+
+    function renderGrid() {
+      const grid = document.getElementById('grid');
+      if (lastResults.length === 0) {
+        grid.innerHTML = '<div class="empty">😕 No matching products found. Try a different combo!</div>';
+        return;
+      }
+      grid.innerHTML = lastResults.map((p, idx) => {
+        const stockInfo = stockLabel(p.stock);
+        const isWished = wishlist.includes(p.id);
+        return `
+          <div class="card" style="animation-delay:${idx * 0.05}s" onclick="openModal(${idx})">
+            <div class="img-wrap">
+              <img src="/images/${p.image_path.split('/').pop()}" alt="${p.name}" />
+              ${p.discount_pct ? `<div class="badge-discount">${p.discount_pct}% OFF</div>` : ''}
+              <button class="wishlist-btn" onclick="event.stopPropagation(); toggleWishlist(${p.id})">${isWished ? '❤️' : '🤍'}</button>
+              <div class="stock-badge ${stockInfo.cls}">${stockInfo.text}</div>
+            </div>
+            <div class="card-body">
+              <div class="brand">${p.brand}</div>
+              <div class="name">${p.name}</div>
+              <div class="rating">⭐ ${p.rating}<span class="count">(${p.review_count})</span></div>
+              <div class="price-row">
+                <div class="price">₹${p.price}</div>
+                ${p.discount_pct ? `<div class="mrp">₹${p.mrp}</div>` : ''}
+              </div>
+              <div class="tags">${p.category} · ${p.color} · ${p.size}</div>
+              <button class="add-cart-btn" onclick="event.stopPropagation(); addToCart(${p.id})">+ Add to Cart</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function applySort() {
+      const mode = document.getElementById('sortSelect').value;
+      if (mode === 'price_asc') lastResults.sort((a, b) => a.price - b.price);
+      else if (mode === 'price_desc') lastResults.sort((a, b) => b.price - a.price);
+      else if (mode === 'rating') lastResults.sort((a, b) => b.rating - a.rating);
+      renderGrid();
+    }
+
+    async function search() {
+      const query = document.getElementById('query').value.trim();
+      if (!query) return;
+      const btn = document.getElementById('searchBtn');
+      const grid = document.getElementById('grid');
+      const meta = document.getElementById('meta');
+      const spinnerBox = document.getElementById('spinnerBox');
+
+      btn.disabled = true;
+      btn.textContent = 'Thinking...';
+      meta.textContent = '';
+      grid.innerHTML = '';
+      spinnerBox.innerHTML = '<div class="spinner"></div>';
+
+      try {
+        const res = await fetch('/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query }),
+        });
+        const data = await res.json();
+        spinnerBox.innerHTML = '';
+
+        meta.textContent = `Filters: ${JSON.stringify(data.filters)} — ${data.count} result(s) found`;
+        lastResults = data.results || [];
+        document.getElementById('sortSelect').value = 'relevance';
+        renderGrid();
+        if (data.count > 0) fireConfetti();
+      } catch (e) {
+        spinnerBox.innerHTML = '';
+        meta.textContent = 'Error: ' + e.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Search';
+      }
+    }
+
+    document.getElementById('query').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') search();
+    });
+
+    // ---------- Modal ----------
+    function openModal(idx) {
+      const p = lastResults[idx];
+      if (!p) return;
+      currentModalProduct = p;
+      document.getElementById('modalImg').src = `/images/${p.image_path.split('/').pop()}`;
+      document.getElementById('modalImg').alt = p.name;
+      document.getElementById('modalBrand').textContent = p.brand;
+      document.getElementById('modalName').textContent = p.name;
+      document.getElementById('modalRating').innerHTML = `⭐ ${p.rating}<span class="count">(${p.review_count} reviews)</span>`;
+      document.getElementById('modalPrice').textContent = `₹${p.price}`;
+      document.getElementById('modalMrp').textContent = p.discount_pct ? `₹${p.mrp}` : '';
+      document.getElementById('modalDiscount').textContent = p.discount_pct ? `${p.discount_pct}% OFF` : '';
+      document.getElementById('modalTags').textContent = `${p.category} · ${p.color} · Size ${p.size}`;
+      document.getElementById('modalDesc').textContent = p.description || '';
+      const stockInfo = stockLabel(p.stock);
+      const modalStock = document.getElementById('modalStock');
+      modalStock.textContent = stockInfo.text;
+      modalStock.style.color = stockInfo.cls === 'stock-low' ? '#ef4444' : '#4ade80';
+      document.getElementById('modalWishBtn').textContent = wishlist.includes(p.id) ? '❤️ Wishlisted' : '🤍 Wishlist';
+      document.getElementById('overlay').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('overlay').classList.remove('open');
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { closeModal(); closeCart(); } });
+
+    function toggleWishlistFromModal() {
+      if (!currentModalProduct) return;
+      toggleWishlist(currentModalProduct.id);
+      document.getElementById('modalWishBtn').textContent = wishlist.includes(currentModalProduct.id) ? '❤️ Wishlisted' : '🤍 Wishlist';
+    }
+    function addToCartFromModal() {
+      if (!currentModalProduct) return;
+      addToCart(currentModalProduct.id);
+    }
+
+    // ---------- Wishlist ----------
+    function toggleWishlist(id) {
+      if (wishlist.includes(id)) {
+        wishlist = wishlist.filter(x => x !== id);
+        showToast('Removed from wishlist');
+      } else {
+        wishlist.push(id);
+        showToast('❤️ Added to wishlist');
+      }
+      saveState();
+      renderGrid();
+    }
+    function toggleWishlistView() {
+      showToast(`You have ${wishlist.length} item(s) in your wishlist`);
+    }
+
+    // ---------- Cart ----------
+    function findProductById(id) {
+      return lastResults.find(p => p.id === id) || cart.find(p => p.id === id);
+    }
+    function addToCart(id) {
+      const product = findProductById(id);
+      if (!product) return;
+      cart.push(product);
+      saveState();
+      showToast('🛒 Added to cart');
+    }
+    function removeFromCart(idx) {
+      cart.splice(idx, 1);
+      saveState();
+      renderCart();
+    }
+    function renderCart() {
+      const itemsBox = document.getElementById('cartItems');
+      const footerBox = document.getElementById('cartFooter');
+      if (cart.length === 0) {
+        itemsBox.innerHTML = '<div class="cart-empty">Your cart is empty 🛍️</div>';
+        footerBox.innerHTML = '';
+        return;
+      }
+      itemsBox.innerHTML = cart.map((p, idx) => `
+        <div class="cart-item">
+          <img src="/images/${p.image_path.split('/').pop()}" alt="${p.name}" />
+          <div class="ci-info">
+            <div class="ci-name">${p.name}</div>
+            <div class="ci-price">₹${p.price}</div>
+          </div>
+          <button onclick="removeFromCart(${idx})">✕</button>
+        </div>
+      `).join('');
+      const total = cart.reduce((sum, p) => sum + p.price, 0).toFixed(2);
+      footerBox.innerHTML = `
+        <div class="cart-total"><span>Total</span><span>₹${total}</span></div>
+        <button class="cart-checkout" onclick="openCheckout()">Checkout</button>
+      `;
+    }
+    function openCart() {
+      renderCart();
+      document.getElementById('cartDrawer').classList.add('open');
+      document.getElementById('cartOverlay').classList.add('open');
+    }
+    function closeCart() {
+      document.getElementById('cartDrawer').classList.remove('open');
+      document.getElementById('cartOverlay').classList.remove('open');
+    }
+
+    // ---------- Checkout (demo simulation — no real payment) ----------
+    let checkoutTimer = null;
+
+    function buildQrUrl(amount, method) {
+      const upiString = `upi://pay?pa=demo-styleai@upi&pn=StyleAI%20Demo&am=${amount}&cu=INR&tn=Order-${method}`;
+      return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`;
+    }
+
+    function switchPayTab(method) {
+      document.getElementById('tabPhonepe').classList.toggle('active', method === 'phonepe');
+      document.getElementById('tabGpay').classList.toggle('active', method === 'gpay');
+      const total = cart.reduce((sum, p) => sum + p.price, 0).toFixed(2);
+      document.getElementById('qrImg').src = buildQrUrl(total, method);
+    }
+
+    function openCheckout() {
+      if (cart.length === 0) {
+        showToast('Your cart is empty');
+        return;
+      }
+      closeCart();
+      const total = cart.reduce((sum, p) => sum + p.price, 0).toFixed(2);
+      document.getElementById('coAmount').textContent = `₹${total}`;
+      document.getElementById('coPayView').style.display = 'block';
+      document.getElementById('coSuccessView').style.display = 'none';
+      switchPayTab('phonepe');
+      document.getElementById('checkoutOverlay').classList.add('open');
+
+      checkoutTimer = setTimeout(() => {
+        const orderId = 'ORD' + Math.floor(100000 + Math.random() * 900000);
+        document.getElementById('coPayView').style.display = 'none';
+        document.getElementById('coSuccessView').style.display = 'block';
+        document.getElementById('orderIdText').textContent = `Order ID: ${orderId}`;
+        fireConfetti();
+        cart = [];
+        saveState();
+      }, 3000);
+    }
+
+    function closeCheckout() {
+      if (checkoutTimer) clearTimeout(checkoutTimer);
+      document.getElementById('checkoutOverlay').classList.remove('open');
+    }
+
+    // ---------- Auth ----------
+    let authMode = 'login';
+    let currentUser = JSON.parse(localStorage.getItem('authUser') || 'null');
+
+    function renderAuthArea() {
+      const box = document.getElementById('authArea');
+      if (currentUser) {
+        box.innerHTML = `
+          <div class="user-chip">
+            ${currentUser.is_admin ? '<span class="admin-tag">ADMIN</span>' : ''}
+            👤 ${currentUser.username}
+            ${currentUser.is_admin ? '<button onclick="openAdminPanel()">Panel</button>' : ''}
+            <button onclick="logout()">Logout</button>
+          </div>
+        `;
+      } else {
+        box.innerHTML = `<button class="auth-btn" onclick="openAuth()">Login / Sign Up</button>`;
+      }
+    }
+
+    function openAuth() {
+      document.getElementById('authError').textContent = '';
+      document.getElementById('authUsername').value = '';
+      document.getElementById('authPassword').value = '';
+      switchAuthTab('login');
+      document.getElementById('authOverlay').classList.add('open');
+    }
+    function closeAuth() {
+      document.getElementById('authOverlay').classList.remove('open');
+    }
+    function switchAuthTab(mode) {
+      authMode = mode;
+      document.getElementById('tabLogin').classList.toggle('active', mode === 'login');
+      document.getElementById('tabSignup').classList.toggle('active', mode === 'signup');
+      document.getElementById('authSubmitBtn').textContent = mode === 'login' ? 'Login' : 'Create Account';
+      document.getElementById('authError').textContent = '';
+    }
+
+    async function submitAuth() {
+      const username = document.getElementById('authUsername').value.trim();
+      const password = document.getElementById('authPassword').value;
+      const errorBox = document.getElementById('authError');
+      errorBox.textContent = '';
+
+      if (!username || !password) {
+        errorBox.textContent = 'Please fill in both fields.';
+        return;
+      }
+
+      try {
+        if (authMode === 'signup') {
+          const res = await fetch('/auth/signup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+          });
+          const data = await res.json();
+          if (!res.ok) { errorBox.textContent = data.detail || 'Signup failed'; return; }
+          showToast('✅ Account created — logging you in...');
+        }
+
+        const loginRes = await fetch('/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+        });
+        const loginData = await loginRes.json();
+        if (!loginRes.ok) { errorBox.textContent = loginData.detail || 'Login failed'; return; }
+
+        currentUser = loginData;
+        localStorage.setItem('authUser', JSON.stringify(currentUser));
+        renderAuthArea();
+        closeAuth();
+        showToast(`👋 Welcome, ${currentUser.username}!`);
+      } catch (e) {
+        errorBox.textContent = 'Network error: ' + e.message;
+      }
+    }
+
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem('authUser');
+      renderAuthArea();
+      showToast('Logged out');
+    }
+
+    // ---------- Admin panel ----------
+    async function openAdminPanel() {
+      if (!currentUser || !currentUser.is_admin) return;
+      try {
+        const res = await fetch('/admin/users', {
+          headers: { 'Authorization': `Bearer ${currentUser.token}` },
+        });
+        const users = await res.json();
+        if (!res.ok) { showToast('Failed to load users'); return; }
+        document.getElementById('adminUsersBody').innerHTML = users.map(u => `
+          <tr>
+            <td>${u.username}</td>
+            <td>${u.is_admin ? '👑 Admin' : 'Customer'}</td>
+            <td>${u.created_at}</td>
+          </tr>
+        `).join('');
+        document.getElementById('adminOverlay').classList.add('open');
+      } catch (e) {
+        showToast('Error: ' + e.message);
+      }
+    }
+    function closeAdminPanel() {
+      document.getElementById('adminOverlay').classList.remove('open');
+    }
+
+    renderAuthArea();
+    updateBadges();
+
+    document.getElementById('grid').innerHTML = `
+      <div class="placeholder" style="grid-column: 1/-1;">
+        <span class="big-emoji">🛒</span>
+        Search something above to see the magic happen.
+      </div>
+    `;
+  </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ai-search-ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: ai-search-app
+    depends_on:
+      - ollama
+    ports:
+      - "8000:8000"
+    volumes:
+      - app_data:/app/data
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:7b
+      - DB_PATH=/app/data/products.db
+      - IMAGE_DIR=/app/data/images
+    restart: unless-stopped
+
+volumes:
+  ollama_data:
+  app_data:

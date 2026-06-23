@@ -1,0 +1,3 @@
+[tool.ruff]
+exclude = ["venv", "static", "frontend", "__pycache__"]
+line-length = 110
