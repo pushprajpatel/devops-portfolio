@@ -33,14 +33,19 @@ def init_users():
         )
         """
     )
-    cur.execute("SELECT id FROM users WHERE username = ?", ("admin",))
+    # Demo-only defaults — override via env vars before deploying anywhere
+    # not entirely throwaway. Never hardcode real credentials here.
+    admin_username = os.environ.get("ADMIN_USERNAME", "admin")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "admin")
+
+    cur.execute("SELECT id FROM users WHERE username = ?", (admin_username,))
     if cur.fetchone() is None:
         salt = secrets.token_hex(16)
         cur.execute(
             "INSERT INTO users (username, salt, password_hash, is_admin) VALUES (?, ?, ?, 1)",
-            ("admin", salt, hash_password("admin", salt)),
+            (admin_username, salt, hash_password(admin_password, salt)),
         )
-        print("Seeded default admin user (username: admin, password: admin)")
+        print(f"Seeded admin user (username: {admin_username})")
     conn.commit()
     conn.close()
 

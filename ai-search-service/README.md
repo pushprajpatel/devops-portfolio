@@ -118,8 +118,12 @@ ai-search-service/
 
 | Role | Username | Password |
 |---|---|---|
-| Admin | `admin` | `admin` |
+| Admin | `admin` (default) | `admin` (default) |
 | Customer | *sign up via the UI* | — |
+
+Admin credentials are seeded from `ADMIN_USERNAME` / `ADMIN_PASSWORD` env
+vars (see `.env.example`) — the values above are just the local-dev default.
+Override them before deploying anywhere beyond your own machine.
 
 ## Known Limitations (by design, for a demo)
 
