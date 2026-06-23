@@ -102,7 +102,15 @@ ai-search-service/
 
 ## CI/CD Pipeline
 
-`pipeline.sh` runs each stage standalone or all together:
+**GitHub Actions** (`.github/workflows/ci.yml`) runs Lint → Test → Build →
+Scan automatically on every push/PR to `main`. The Deploy and Smoke-test
+stages aren't in GitHub Actions yet — GitHub's cloud runners can't reach a
+local Minikube cluster, so those stages currently run via `pipeline.sh`
+against Minikube locally (see below). Wiring them into CI would need either
+a self-hosted runner or a real cloud cluster as the deploy target.
+
+`pipeline.sh` runs every stage (including the local-only ones) standalone or
+all together:
 
 ```bash
 ./pipeline.sh lint     # ruff

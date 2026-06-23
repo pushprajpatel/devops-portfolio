@@ -1,5 +1,7 @@
 # DevOps Portfolio
 
+[![CI](https://github.com/pushprajpatel/devops-portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/pushprajpatel/devops-portfolio/actions/workflows/ci.yml)
+
 A collection of projects demonstrating end-to-end DevOps practices —
 containerization, orchestration, CI/CD, and infrastructure-as-code.
 
