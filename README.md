@@ -22,6 +22,16 @@ product search, fully containerized and deployed to Kubernetes. Covers:
 See [`ai-search-service/README.md`](./ai-search-service/README.md) for full
 setup instructions, architecture, and a feature walkthrough.
 
+### [Terraform — AWS Deployment](./terraform)
+
+Provisions the same app onto AWS: an Application Load Balancer in front of
+an Auto Scaling Group of EC2 instances, each bootstrapping itself via
+`user_data` (Docker install → clone repo → `docker compose up`).
+
+See [`terraform/README.md`](./terraform/README.md) for step-by-step deploy
+instructions. ⚠️ Creates real, billable AWS resources — nothing runs
+automatically, and remember to `terraform destroy` when done.
+
 ---
 
 More projects coming soon.

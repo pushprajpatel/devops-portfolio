@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and fill in your own values. Never commit
+# terraform.tfvars itself — it's already in .gitignore.
+
+aws_region           = "ap-south-1"
+instance_type        = "t3.large"
+key_name             = "your-ec2-keypair-name" # or remove this line to disable SSH
+allowed_ssh_cidr     = "YOUR_IP_HERE/32"       # get it from `curl ifconfig.me`
+github_repo_url      = "https://github.com/pushprajpatel/devops-portfolio.git"
+asg_min_size         = 1
+asg_max_size         = 3
+asg_desired_capacity = 1
