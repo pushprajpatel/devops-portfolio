@@ -16,6 +16,8 @@ product search, fully containerized and deployed to Kubernetes. Covers:
 - Kubernetes manifests (Deployment, Service, PVC, health probes)
 - A complete CI/CD pipeline (lint → test → build → security scan → deploy →
   smoke test), validated end-to-end on Minikube
+- GitOps continuous delivery via ArgoCD (auto-sync from `k8s/`)
+- Observability with Prometheus metrics (`/metrics`) + Grafana dashboards
 - Automated testing (pytest) and linting (ruff)
 - Container image vulnerability scanning (Trivy)
 
