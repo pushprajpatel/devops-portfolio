@@ -25,8 +25,8 @@ spec:
     spec:
       containers:
         - name: app
-          image: ai-search-service:ci
-          imagePullPolicy: Never
+          image: ghcr.io/pushprajpatel/devops-portfolio:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:

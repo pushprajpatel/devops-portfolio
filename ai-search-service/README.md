@@ -117,10 +117,18 @@ On first run this builds the app image, starts Ollama, pulls the `qwen2.5:7b` mo
 
 ## Quick Start — Kubernetes / Minikube
 
-A single script configures Minikube, deploys the full stack, and sets up local DNS so every service is accessible by name — no port-forwarding required:
+**Prerequisites** (macOS):
+```bash
+brew install minikube kubectl
+# Docker Desktop must also be installed and running: https://www.docker.com/products/docker-desktop
+```
+
+A single script configures Minikube, installs ArgoCD, deploys the full stack, and sets up local DNS so every service is accessible by name — no port-forwarding required:
 
 ```bash
-# Run from the project root
+# Clone the repo, then from the project root:
+git clone https://github.com/pushprajpatel/devops-portfolio.git
+cd devops-portfolio
 ./local-up.sh
 ```
 
