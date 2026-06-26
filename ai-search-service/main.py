@@ -4,6 +4,7 @@ import secrets
 import requests
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
 from db import get_connection, hash_password, init_users
@@ -11,6 +12,7 @@ from db import get_connection, hash_password, init_users
 IMAGE_DIR = os.environ.get("IMAGE_DIR", "static/images")
 
 app = FastAPI(title="AI Search Service")
+Instrumentator().instrument(app).expose(app)
 app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
 init_users()
