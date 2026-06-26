@@ -9,6 +9,8 @@ containerization, orchestration, CI/CD, and infrastructure-as-code.
 
 ### [StyleAI — AI-Powered E-commerce Search](./ai-search-service)
 
+![StyleAI App](./screenshots/app.png)
+
 A full-stack e-commerce app with a locally-hosted LLM for natural-language
 product search, fully containerized and deployed to Kubernetes. Covers:
 

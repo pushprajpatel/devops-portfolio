@@ -11,6 +11,16 @@ Built as an end-to-end DevOps showcase: containerized, tested, linted,
 security-scanned, and deployed to Kubernetes — with the full CI/CD pipeline
 validated locally against Minikube before being wired into GitHub Actions.
 
+## Screenshots
+
+| StyleAI App | Grafana — Live Metrics |
+|---|---|
+| ![StyleAI App](../screenshots/app.png) | ![Grafana Dashboard](../screenshots/grafana.png) |
+
+| Prometheus — Target UP | ArgoCD — Healthy & Synced |
+|---|---|
+| ![Prometheus Targets](../screenshots/prometheus.png) | ![ArgoCD](../screenshots/argocd.png) |
+
 ## Features
 
 - **AI-powered NL search** — [Ollama](https://ollama.ai) (`qwen2.5:7b`) running locally, tool-calling to extract structured filters from free-text queries
