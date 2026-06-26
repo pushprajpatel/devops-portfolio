@@ -172,6 +172,149 @@ spec:
       targetPort: 9090
   type: NodePort
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+data:
+  prometheus.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus:9090
+        access: proxy
+        isDefault: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: default
+        folder: ''
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+data:
+  styleai.json: |
+    {
+      "title": "StyleAI — FastAPI Metrics",
+      "uid": "styleai-fastapi",
+      "schemaVersion": 38,
+      "refresh": "15s",
+      "time": { "from": "now-30m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Request Rate (req/s)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "sum(rate(http_requests_total[1m])) by (handler)",
+            "legendFormat": "{{handler}}",
+            "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+          }],
+          "fieldConfig": { "defaults": { "unit": "reqps" } }
+        },
+        {
+          "id": 2,
+          "title": "Latency Percentiles (p50 / p95 / p99)",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[2m])) by (le))",
+              "legendFormat": "p50",
+              "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[2m])) by (le))",
+              "legendFormat": "p95",
+              "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[2m])) by (le))",
+              "legendFormat": "p99",
+              "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "s" } }
+        },
+        {
+          "id": 3,
+          "title": "Error Rate (4xx + 5xx %)",
+          "type": "timeseries",
+          "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "sum(rate(http_requests_total{status_code=~\"[45]..\"}[2m])) / sum(rate(http_requests_total[2m])) * 100",
+            "legendFormat": "error %",
+            "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+          }],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+        },
+        {
+          "id": 4,
+          "title": "In-Progress Requests",
+          "type": "timeseries",
+          "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+          "targets": [{
+            "expr": "http_requests_in_progress",
+            "legendFormat": "in-progress",
+            "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+          }],
+          "fieldConfig": { "defaults": { "unit": "short" } }
+        },
+        {
+          "id": 5,
+          "title": "Total Requests",
+          "type": "stat",
+          "gridPos": { "x": 0, "y": 16, "w": 6, "h": 4 },
+          "targets": [{
+            "expr": "sum(http_requests_total)",
+            "legendFormat": "total",
+            "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+          }],
+          "fieldConfig": { "defaults": { "unit": "short" } }
+        },
+        {
+          "id": 6,
+          "title": "Prometheus Target",
+          "type": "stat",
+          "gridPos": { "x": 6, "y": 16, "w": 6, "h": 4 },
+          "targets": [{
+            "expr": "up{job=\"ai-search-app\"}",
+            "legendFormat": "up",
+            "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" }
+          }],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "mappings": [
+                { "type": "value", "options": { "0": { "text": "DOWN", "color": "red" }, "1": { "text": "UP", "color": "green" } } }
+              ]
+            }
+          }
+        }
+      ],
+      "templating": {
+        "list": [{
+          "name": "DS_PROMETHEUS",
+          "type": "datasource",
+          "query": "prometheus",
+          "hide": 2
+        }]
+      }
+    }
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -206,9 +349,24 @@ spec:
           volumeMounts:
             - name: grafana-data
               mountPath: /var/lib/grafana
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources
+            - name: dashboard-provider
+              mountPath: /etc/grafana/provisioning/dashboards
+            - name: dashboards
+              mountPath: /var/lib/grafana/dashboards
       volumes:
         - name: grafana-data
           emptyDir: {}
+        - name: datasources
+          configMap:
+            name: grafana-datasources
+        - name: dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+        - name: dashboards
+          configMap:
+            name: grafana-dashboards
 ---
 apiVersion: v1
 kind: Service
