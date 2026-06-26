@@ -28,8 +28,10 @@ A production-grade e-commerce application powered by a locally-hosted LLM that p
 | Security | Trivy image scanning, PBKDF2 password hashing, no secrets in source |
 | IaC | Terraform — AWS ALB + Auto Scaling Group of EC2 instances |
 
-**One-command local setup** (Minikube + local DNS, no port-forwarding):
+**One-command setup** — installs all dependencies and brings up the full stack:
 ```bash
+git clone https://github.com/pushprajpatel/devops-portfolio.git
+cd devops-portfolio
 ./local-up.sh
 ```
 
