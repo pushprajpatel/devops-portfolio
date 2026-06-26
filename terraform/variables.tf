@@ -17,9 +17,8 @@ variable "key_name" {
 }
 
 variable "allowed_ssh_cidr" {
-  description = "CIDR allowed to SSH into instances (e.g. \"YOUR_IP/32\"). Never leave this as 0.0.0.0/0."
+  description = "CIDR allowed to SSH into instances. Must be set to your own IP (e.g. \"1.2.3.4/32\"). No default — you must provide this explicitly."
   type        = string
-  default     = "0.0.0.0/0"
 }
 
 variable "github_repo_url" {
