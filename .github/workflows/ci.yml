@@ -67,3 +67,30 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: "1"
+
+  push:
+    name: Push (GHCR)
+    runs-on: ubuntu-latest
+    needs: [scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+      - run: docker load -i /tmp/ai-search-service.tar
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag and push
+        run: |
+          docker tag ai-search-service:ci ghcr.io/${{ github.repository_owner }}/devops-portfolio:latest
+          docker tag ai-search-service:ci ghcr.io/${{ github.repository_owner }}/devops-portfolio:${{ github.sha }}
+          docker push ghcr.io/${{ github.repository_owner }}/devops-portfolio:latest
+          docker push ghcr.io/${{ github.repository_owner }}/devops-portfolio:${{ github.sha }}
