@@ -81,20 +81,55 @@ and launches Prometheus + Grafana automatically on first run.
 | Prometheus | http://localhost:9090 |
 | Grafana | http://localhost:3000 (admin / admin) |
 
-## Quick Start (Kubernetes / Minikube)
+## Quick Start (Kubernetes / Minikube — full stack)
+
+One script sets up everything and keeps it running with no port-forwarding:
 
 ```bash
-minikube start --memory=7000 --cpus=4
-./pipeline.sh build        # build the image
-./pipeline.sh load         # load it into Minikube
-./pipeline.sh deploy       # apply k8s/ manifests
-./pipeline.sh smoke        # verify /health and /search
+# From the project root
+./local-up.sh
 ```
 
-Or run the whole CI/CD pipeline in one shot:
+This will:
+1. Start Minikube (if not already running)
+2. Enable the Nginx Ingress addon
+3. Apply all `k8s/` manifests (app, Ollama, Prometheus, Grafana, Ingress)
+4. Register the ArgoCD ingress
+5. Update `/etc/hosts` and start `minikube tunnel`
+
+All services are then available via local DNS — keep the terminal open:
+
+| Service | URL |
+|---|---|
+| App | http://styleai.test |
+| Prometheus | http://prometheus.test |
+| Grafana | http://grafana.test (admin / admin) |
+| ArgoCD | https://argocd.test (admin / see below) |
+
+**ArgoCD password:**
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d
+```
+
+> **macOS note:** `.test` domains are used instead of `.local` because macOS
+> routes `.local` via mDNS (Bonjour) and ignores `/etc/hosts` for them.
+
+**First-time image build** (if pods show `ImagePullBackOff`):
+```bash
+cd ai-search-service
+docker build -t ai-search-service:ci .
+docker save ai-search-service:ci -o /tmp/ai-search.tar
+minikube cp /tmp/ai-search.tar /tmp/ai-search.tar
+minikube ssh "docker load -i /tmp/ai-search.tar"
+kubectl rollout restart deployment/app
+```
+
+Or run the full local CI/CD pipeline stage by stage:
 
 ```bash
-./pipeline.sh all
+cd ai-search-service
+./pipeline.sh build && ./pipeline.sh load && ./pipeline.sh deploy && ./pipeline.sh smoke
 ```
 
 ## Run Locally (no Docker)

@@ -24,6 +24,11 @@ product search, fully containerized and deployed to Kubernetes. Covers:
 See [`ai-search-service/README.md`](./ai-search-service/README.md) for full
 setup instructions, architecture, and a feature walkthrough.
 
+**One-command local setup** (Minikube + local DNS, no port-forwarding):
+```bash
+./local-up.sh
+```
+
 ### [Terraform — AWS Deployment](./terraform)
 
 Provisions the same app onto AWS: an Application Load Balancer in front of
