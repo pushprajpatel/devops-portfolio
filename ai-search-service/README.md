@@ -1,15 +1,12 @@
 # StyleAI — AI-Powered E-commerce Search
 
-A full-stack e-commerce demo where a **local LLM** (no external API, zero
-token cost) parses natural-language search queries — including Hinglish —
-into structured product filters via tool-calling, then queries a product
-catalog in real time.
+A full-stack e-commerce application where a **locally-hosted LLM** (no external API, zero token cost) parses natural-language product queries — including Hinglish — into structured filters via tool-calling, then queries a live product catalog in real time.
 
 > "black mein M size dikhado jo 400 se 500 ke beech mai ho" → `{color: black, size: M, min_price: 400, max_price: 500}`
 
-Built as an end-to-end DevOps showcase: containerized, tested, linted,
-security-scanned, and deployed to Kubernetes — with the full CI/CD pipeline
-validated locally against Minikube before being wired into GitHub Actions.
+Built as an end-to-end DevOps showcase covering containerisation, Kubernetes orchestration, GitOps, observability, alerting, autoscaling, and a fully automated CI/CD pipeline with container image publishing.
+
+---
 
 ## Screenshots
 
@@ -21,111 +18,138 @@ validated locally against Minikube before being wired into GitHub Actions.
 |---|---|
 | ![Prometheus Targets](../screenshots/prometheus.png) | ![ArgoCD](../screenshots/argocd.png) |
 
+---
+
 ## Features
 
-- **AI-powered NL search** — [Ollama](https://ollama.ai) (`qwen2.5:7b`) running locally, tool-calling to extract structured filters from free-text queries
-- **Full e-commerce UI** — animated storefront, product detail modal, cart, wishlist, sort/filter, fake checkout flow (QR-code simulation)
-- **Auth** — customer signup/login + admin role (PBKDF2-hashed passwords, session tokens)
-- **100-product catalog** — real product photography, category/brand/color/price metadata, SQLite-backed
-- **Fully containerized** — `docker-compose up` runs the whole stack (app + Ollama + Prometheus + Grafana) with zero manual setup
-- **Kubernetes-ready** — Deployment/Service/PVC manifests for the app, model server, and monitoring stack
-- **GitOps via ArgoCD** — `k8s/argocd-app.yaml` auto-syncs the cluster whenever `k8s/` changes on `main`
-- **Observability** — Prometheus scrapes `/metrics` every 15s; Grafana visualises request rates, latencies, and error counts
+- **AI-powered natural-language search** — [Ollama](https://ollama.ai) (`qwen2.5:7b`) runs locally; tool-calling extracts structured filters from free-text queries with no external API dependency
+- **Full e-commerce UI** — animated storefront, product detail modal, cart, wishlist, sort/filter, and a simulated checkout flow with QR-code payment screen
+- **Authentication** — customer signup/login and an admin role; passwords hashed with PBKDF2-HMAC-SHA256 and session tokens generated with `secrets.token_hex`
+- **100-product catalog** — real product photography with category, brand, colour, size, and pricing metadata; SQLite-backed
+- **Fully containerised** — `docker compose up` starts the entire stack (app, Ollama, Prometheus, Grafana) with zero manual configuration
+- **Kubernetes-ready** — Deployment, Service, PVC, and health-probe manifests for every component; validated on Minikube
+- **Horizontal Pod Autoscaler** — automatically scales the app between 1 and 5 replicas based on CPU (70%) and memory (80%) utilisation
+- **Resource-governed pods** — CPU and memory requests/limits defined on every container to enable reliable scheduling and HPA
+- **GitOps via ArgoCD** — any push to `k8s/` on `main` is automatically reconciled to the cluster; no manual `kubectl apply` required
+- **Observability** — Prometheus scrapes `/metrics` every 15 s; a custom Grafana dashboard visualises request rate, p50/p95/p99 latency, and error rate per endpoint
+- **Alerting** — three Prometheus alerting rules (app down, high error rate, high latency) wired to Alertmanager for notification routing
+- **CI/CD pipeline** — GitHub Actions runs lint → test → build → security scan → publish on every push to `main`; images are tagged with `:latest` and `:<git-sha>` and published to GitHub Container Registry (GHCR)
+
+---
 
 ## Architecture
 
 ```
 ┌─────────────┐   NL query    ┌──────────────────┐   tool-call    ┌──────────────────┐
-│   Browser   │ ────────────▶ │  FastAPI server   │ ─────────────▶ │  Ollama (local)   │
-│ (frontend)  │ ◀──────────── │     (main.py)      │ ◀───────────── │   qwen2.5:7b       │
+│   Browser   │ ────────────▶ │  FastAPI server   │ ─────────────▶ │  Ollama (local)  │
+│ (frontend)  │ ◀──────────── │    (main.py)      │ ◀───────────── │  qwen2.5:7b      │
 └─────────────┘   JSON resp   └──────────────────┘  structured     └──────────────────┘
                                        │              filters
                                        ▼
                               ┌──────────────────┐
-                              │  SQLite (100      │
-                              │  products + auth) │
+                              │  SQLite           │
+                              │  (100 products    │
+                              │   + auth)         │
                               └──────────────────┘
 
-                              Observability layer
-┌────────────────┐  scrape /metrics  ┌──────────────────┐   query   ┌──────────────┐
-│  FastAPI app   │ ─────────────────▶│   Prometheus      │ ─────────▶│   Grafana    │
-│  (:8000)       │    every 15s      │   (:9090)         │           │   (:3000)    │
-└────────────────┘                   └──────────────────┘           └──────────────┘
+Observability
+┌────────────────┐  scrape /metrics  ┌──────────────┐  query  ┌─────────────┐
+│  FastAPI app   │ ─────────────────▶│  Prometheus  │ ───────▶│   Grafana   │
+│  :8000         │    every 15 s     │  :9090       │         │   :3000     │
+└────────────────┘                   └──────────────┘         └─────────────┘
+                                            │ fire alerts
+                                            ▼
+                                     ┌──────────────┐
+                                     │ Alertmanager │
+                                     │  :9093       │
+                                     └──────────────┘
 
-                              GitOps layer
-┌──────────────┐  watches k8s/  ┌──────────────────┐  kubectl apply  ┌─────────────┐
-│  GitHub repo │ ──────────────▶│     ArgoCD        │ ───────────────▶│  Kubernetes │
-│  (main)      │  auto-sync     │                   │                 │  cluster    │
-└──────────────┘                └──────────────────┘                 └─────────────┘
+GitOps
+┌──────────────┐  push to main  ┌──────────────┐  reconcile  ┌─────────────┐
+│  GitHub repo │ ──────────────▶│    ArgoCD    │ ───────────▶│  Kubernetes │
+│  k8s/        │   auto-sync    │              │             │  cluster    │
+└──────────────┘                └──────────────┘             └─────────────┘
+
+CI/CD
+  Lint (ruff) → Test (pytest) → Build (Docker) → Scan (Trivy) → Push (GHCR)
 ```
+
+---
 
 ## Tech Stack
 
 | Layer | Tools |
 |---|---|
-| Backend | Python, FastAPI, SQLite |
+| Backend | Python 3.11, FastAPI, SQLite |
 | AI / NL search | Ollama (`qwen2.5:7b`), tool-calling |
-| Frontend | Vanilla HTML/CSS/JS (no build step) |
+| Frontend | Vanilla HTML / CSS / JS (no build step) |
 | Containers | Docker, Docker Compose |
-| Orchestration | Kubernetes (Deployment, Service, PVC, probes) — validated on Minikube |
-| GitOps / CD | ArgoCD (auto-sync from `k8s/` on push to `main`) |
-| Observability | Prometheus (`/metrics` via `prometheus-fastapi-instrumentator`), Grafana |
-| CI/CD | Lint (ruff) → Test (pytest) → Build (Docker) → Scan (Trivy) → Load → Deploy → Smoke test |
-| Testing | pytest, FastAPI TestClient |
-| Security | Trivy image scanning, PBKDF2 password hashing |
+| Orchestration | Kubernetes — Deployment, Service, PVC, HPA, Ingress; validated on Minikube |
+| GitOps / CD | ArgoCD — auto-syncs `k8s/` on every push to `main` |
+| Observability | Prometheus, Grafana, Alertmanager; `/metrics` via `prometheus-fastapi-instrumentator` |
+| CI/CD | GitHub Actions — lint → test → build → Trivy scan → push to GHCR |
+| Image registry | GitHub Container Registry (GHCR) — tagged `:latest` + `:<git-sha>` |
+| Testing | pytest, FastAPI `TestClient` |
+| Security | Trivy container scanning (blocks on unfixed HIGH/CRITICAL CVEs), PBKDF2 password hashing |
+| IaC | Terraform — AWS ALB + Auto Scaling Group of EC2 instances |
 
-## Quick Start (Docker Compose — easiest)
+---
+
+## Quick Start — Docker Compose
+
+The fastest way to run the full stack locally:
 
 ```bash
 cd ai-search-service
 docker compose up -d
 ```
 
-This builds the app, starts Ollama, pulls the model, seeds the database,
-and launches Prometheus + Grafana automatically on first run.
+On first run this builds the app image, starts Ollama, pulls the `qwen2.5:7b` model, seeds the database, and launches Prometheus and Grafana. No further configuration is needed.
 
 | Service | URL |
 |---|---|
 | App | http://localhost:8000 |
-| Metrics | http://localhost:8000/metrics |
+| Metrics endpoint | http://localhost:8000/metrics |
 | Prometheus | http://localhost:9090 |
-| Grafana | http://localhost:3000 (admin / admin) |
+| Grafana | http://localhost:3000 — `admin` / `admin` |
 
-## Quick Start (Kubernetes / Minikube — full stack)
+---
 
-One script sets up everything and keeps it running with no port-forwarding:
+## Quick Start — Kubernetes / Minikube
+
+A single script configures Minikube, deploys the full stack, and sets up local DNS so every service is accessible by name — no port-forwarding required:
 
 ```bash
-# From the project root
+# Run from the project root
 ./local-up.sh
 ```
 
-This will:
+The script will:
 1. Start Minikube (if not already running)
-2. Enable the Nginx Ingress addon
-3. Apply all `k8s/` manifests (app, Ollama, Prometheus, Grafana, Ingress)
-4. Register the ArgoCD ingress
-5. Update `/etc/hosts` and start `minikube tunnel`
+2. Enable and configure the Nginx Ingress addon
+3. Apply all `k8s/` manifests — app, Ollama, Prometheus, Grafana, Alertmanager, HPA, and Ingress
+4. Create the ArgoCD ingress in the `argocd` namespace
+5. Add entries to `/etc/hosts` (requires `sudo` once)
+6. Start `minikube tunnel` to route traffic through `127.0.0.1`
 
-All services are then available via local DNS — keep the terminal open:
+All services are then reachable via local DNS. Keep the terminal open while working:
 
-| Service | URL |
-|---|---|
-| App | http://styleai.test |
-| Prometheus | http://prometheus.test |
-| Grafana | http://grafana.test (admin / admin) |
-| ArgoCD | https://argocd.test (admin / see below) |
+| Service | URL | Credentials |
+|---|---|---|
+| App | http://styleai.test | — |
+| Prometheus | http://prometheus.test | — |
+| Grafana | http://grafana.test | admin / admin |
+| ArgoCD | https://argocd.test | admin / see below |
 
-**ArgoCD password:**
+**Retrieve the ArgoCD admin password:**
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
   -o jsonpath="{.data.password}" | base64 -d
 ```
 
-> **macOS note:** `.test` domains are used instead of `.local` because macOS
-> routes `.local` via mDNS (Bonjour) and ignores `/etc/hosts` for them.
+> **macOS note:** `.test` domains are used instead of `.local` because macOS routes `.local` through mDNS (Bonjour) and bypasses `/etc/hosts` for those names.
 
-**First-time image build** (if pods show `ImagePullBackOff`):
+**First-time image load into Minikube** (if pods show `ImagePullBackOff`):
 ```bash
 cd ai-search-service
 docker build -t ai-search-service:ci .
@@ -135,132 +159,158 @@ minikube ssh "docker load -i /tmp/ai-search.tar"
 kubectl rollout restart deployment/app
 ```
 
-Or run the full local CI/CD pipeline stage by stage:
+---
 
-```bash
-cd ai-search-service
-./pipeline.sh build && ./pipeline.sh load && ./pipeline.sh deploy && ./pipeline.sh smoke
-```
-
-## Run Locally (no Docker)
+## Run Locally Without Docker
 
 ```bash
 cd ai-search-service
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-ollama pull qwen2.5:7b && ollama serve &   # requires Ollama installed
-python3 db.py                               # seeds products.db
+ollama pull qwen2.5:7b && ollama serve &
+python3 db.py
 uvicorn main:app --reload --port 8000
 ```
+
+Requires [Ollama](https://ollama.ai) installed on the host.
+
+---
 
 ## Project Structure
 
 ```
 ai-search-service/
-├── main.py                  # FastAPI app — search, auth, admin, /metrics
-├── db.py                    # DB schema + seed data + image fetching
-├── frontend/index.html      # SPA — search, cart, wishlist, checkout
-├── prometheus.yml           # Prometheus scrape config (targets app:8000)
-├── tests/test_main.py       # pytest suite (13 tests)
+├── main.py                      # FastAPI app — search, auth, admin, /metrics
+├── db.py                        # DB schema, seed data, and image seeding
+├── frontend/index.html          # SPA — search, cart, wishlist, checkout
+├── prometheus.yml               # Prometheus scrape config for Docker Compose
+├── Dockerfile
+├── docker-compose.yml           # App + Ollama + Prometheus + Grafana
+├── pipeline.sh                  # Local CI/CD runner (stage-by-stage)
+├── tests/
+│   ├── conftest.py
+│   └── test_main.py             # 13 pytest tests (Ollama mocked)
 ├── k8s/
-│   ├── app-deployment.yaml  # App Deployment + Service + PVC
+│   ├── app-deployment.yaml      # Deployment + Service + PVC (with resource limits)
 │   ├── ollama-deployment.yaml
-│   ├── monitoring.yaml      # Prometheus + Grafana Deployments + Services
-│   └── argocd-app.yaml      # ArgoCD Application (GitOps auto-sync)
-├── pipeline.sh              # Local CI/CD orchestrator, stage-by-stage
-├── Dockerfile / docker-compose.yml
-└── requirements.txt / requirements-dev.txt
+│   ├── hpa.yaml                 # HorizontalPodAutoscaler — 1–5 replicas
+│   ├── monitoring.yaml          # Prometheus + Grafana + Alertmanager + alert rules
+│   ├── ingress.yaml             # Nginx Ingress for .test local DNS
+│   └── argocd-app.yaml          # ArgoCD Application (GitOps auto-sync)
+├── requirements.txt
+└── requirements-dev.txt
 ```
+
+---
 
 ## CI/CD Pipeline
 
-**GitHub Actions** (`.github/workflows/ci.yml`) runs Lint → Test → Build →
-Scan automatically on every push/PR to `main`. The Deploy and Smoke-test
-stages aren't in GitHub Actions yet — GitHub's cloud runners can't reach a
-local Minikube cluster, so those stages currently run via `pipeline.sh`
-against Minikube locally (see below). Wiring them into CI would need either
-a self-hosted runner or a real cloud cluster as the deploy target.
+**GitHub Actions** (`.github/workflows/ci.yml`) runs automatically on every push and pull request to `main`:
 
-`pipeline.sh` runs every stage (including the local-only ones) standalone or
-all together:
+```
+Lint (ruff) → Test (pytest) → Build (Docker) → Scan (Trivy) → Push (GHCR)
+```
+
+| Stage | What it does |
+|---|---|
+| **Lint** | `ruff check` — enforces code style |
+| **Test** | `pytest` — 13 tests, Ollama dependency mocked |
+| **Build** | `docker build` — produces `ai-search-service:ci` |
+| **Scan** | Trivy — fails the pipeline on unfixed HIGH or CRITICAL CVEs |
+| **Push** | Publishes to GHCR as `:latest` and `:<git-sha>` (main branch only) |
+
+The image is available at `ghcr.io/pushprajpatel/devops-portfolio`.
+
+The Deploy and Smoke-test stages run locally via `pipeline.sh` rather than in GitHub Actions, because GitHub-hosted runners cannot reach a Minikube cluster. Wiring these into CI would require a self-hosted runner or a cloud cluster as the deployment target.
 
 ```bash
+cd ai-search-service
 ./pipeline.sh lint     # ruff
-./pipeline.sh test     # pytest (13 tests, Ollama mocked)
+./pipeline.sh test     # pytest
 ./pipeline.sh build    # docker build
-./pipeline.sh scan     # trivy (fails on fixable HIGH/CRITICAL CVEs)
-./pipeline.sh load     # minikube image load
+./pipeline.sh scan     # trivy
+./pipeline.sh load     # push image into Minikube
 ./pipeline.sh deploy   # kubectl apply + rollout wait
-./pipeline.sh smoke    # /health + /search through port-forward
+./pipeline.sh smoke    # curl /health and /search
+./pipeline.sh all      # run every stage in sequence
 ```
 
-## Monitoring (Prometheus + Grafana)
+---
 
-The app exposes a `/metrics` endpoint (via `prometheus-fastapi-instrumentator`)
-with HTTP request counts, latencies, and in-progress requests per route.
+## Observability
 
-**Docker Compose** — metrics stack starts automatically with `docker compose up`.
+The app exposes Prometheus metrics at `/metrics` via `prometheus-fastapi-instrumentator`, including HTTP request counts, latency histograms, and in-progress request gauges broken down by endpoint.
 
-**Kubernetes** — apply the monitoring manifests:
+**Alert rules** (defined in `k8s/monitoring.yaml`) fire when:
 
-```bash
-kubectl apply -f k8s/monitoring.yaml
-```
+| Alert | Condition | Severity |
+|---|---|---|
+| `AppDown` | Target unreachable for > 1 min | critical |
+| `HighErrorRate` | 5xx rate > 5% over 5 min | warning |
+| `HighLatencyP95` | p95 latency > 1 s over 2 min | warning |
 
-Then set up Grafana:
+Alerts are routed through **Alertmanager** (`:9093`), which is pre-configured and ready to forward to any webhook, PagerDuty, Slack, or email receiver.
 
-1. Open Grafana at `http://$(minikube ip):<NodePort>` (or `http://localhost:3000` for Compose)
-2. Log in with `admin` / `admin`
-3. Add a Prometheus data source: URL = `http://prometheus:9090`
-4. Import dashboard ID **17175** (FastAPI Observability) from grafana.com
+**Grafana dashboard** (auto-provisioned, titled *StyleAI — FastAPI Metrics*) shows:
+- Request rate per endpoint (req/s)
+- Latency p50, p95, and p99
+- In-progress requests
+- Error rate (4xx + 5xx)
+
+---
 
 ## GitOps / ArgoCD
 
-`k8s/argocd-app.yaml` defines an ArgoCD Application that watches `ai-search-service/k8s/`
-on `main` and auto-syncs the cluster on every push — no manual `kubectl apply` needed.
+`k8s/argocd-app.yaml` registers an ArgoCD `Application` that watches `ai-search-service/k8s/` on the `main` branch and automatically reconciles the cluster state on every push. Any change to a manifest is live in the cluster within seconds — no manual `kubectl apply` is ever needed after the initial setup.
 
 **Install ArgoCD on Minikube:**
 
 ```bash
 kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -n argocd --server-side \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl wait --for=condition=available deployment --all -n argocd --timeout=300s
 ```
 
-**Register this app:**
+**Register the application:**
 
 ```bash
 kubectl apply -f k8s/argocd-app.yaml
 ```
 
-**Access the ArgoCD UI:**
+After this, every `git push` to `k8s/` triggers an automatic sync. The ArgoCD UI (available at `https://argocd.test` when running via `local-up.sh`) shows real-time sync status, health, and deployment history.
 
-```bash
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-# open https://localhost:8080
-# username: admin
-# password: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-```
+---
 
-After this, pushing any change to `k8s/` on `main` will trigger ArgoCD to
-automatically reconcile the cluster state.
+## Autoscaling
 
-## Demo Login
+`k8s/hpa.yaml` defines a `HorizontalPodAutoscaler` that watches the app Deployment and scales between **1 and 5 replicas** when:
+- CPU utilisation exceeds **70%**, or
+- Memory utilisation exceeds **80%**
+
+Requires the `metrics-server` addon: `minikube addons enable metrics-server`
+
+---
+
+## Demo Credentials
 
 | Role | Username | Password |
 |---|---|---|
-| Admin | `admin` (default) | `admin` (default) |
-| Customer | *sign up via the UI* | — |
+| Admin | `admin` | `admin` |
+| Customer | *register via the UI* | — |
 
-Admin credentials are seeded from `ADMIN_USERNAME` / `ADMIN_PASSWORD` env
-vars (see `.env.example`) — the values above are just the local-dev default.
-Override them before deploying anywhere beyond your own machine.
+Admin credentials are seeded from `ADMIN_USERNAME` / `ADMIN_PASSWORD` environment variables (see `.env.example`). The values above are local-development defaults only — always override them before deploying to any shared environment.
 
-## Known Limitations (by design, for a demo)
+---
 
-- Auth sessions are in-memory (reset on restart) — not production auth
-- Catalog limited to 4 colors / 3 categories — constrained by available free product photography
-- No real payment processing — checkout is a UI simulation
+## Known Limitations
+
+- **In-memory sessions** — session tokens reset on server restart; not suitable for production
+- **Limited catalogue** — 4 colours and 3 categories, constrained by available royalty-free product photography
+- **No real payment processing** — the checkout flow is a UI simulation
+
+---
 
 ## License
 

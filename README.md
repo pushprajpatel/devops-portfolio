@@ -2,8 +2,9 @@
 
 [![CI](https://github.com/pushprajpatel/devops-portfolio/actions/workflows/ci.yml/badge.svg)](https://github.com/pushprajpatel/devops-portfolio/actions/workflows/ci.yml)
 
-A collection of projects demonstrating end-to-end DevOps practices —
-containerization, orchestration, CI/CD, and infrastructure-as-code.
+A collection of projects demonstrating end-to-end DevOps engineering — containerisation, Kubernetes orchestration, GitOps, observability, alerting, autoscaling, CI/CD automation, and cloud infrastructure provisioning.
+
+---
 
 ## Projects
 
@@ -11,35 +12,45 @@ containerization, orchestration, CI/CD, and infrastructure-as-code.
 
 ![StyleAI App](./screenshots/app.png)
 
-A full-stack e-commerce app with a locally-hosted LLM for natural-language
-product search, fully containerized and deployed to Kubernetes. Covers:
+A production-grade e-commerce application powered by a locally-hosted LLM that parses natural-language product queries into structured database filters — with a complete DevOps stack running end-to-end on Kubernetes.
 
-- Docker + Docker Compose multi-service setup (app + local LLM)
-- Kubernetes manifests (Deployment, Service, PVC, health probes)
-- A complete CI/CD pipeline (lint → test → build → security scan → deploy →
-  smoke test), validated end-to-end on Minikube
-- GitOps continuous delivery via ArgoCD (auto-sync from `k8s/`)
-- Observability with Prometheus metrics (`/metrics`) + Grafana dashboards
-- Automated testing (pytest) and linting (ruff)
-- Container image vulnerability scanning (Trivy)
+**What's covered:**
 
-See [`ai-search-service/README.md`](./ai-search-service/README.md) for full
-setup instructions, architecture, and a feature walkthrough.
+| Area | Implementation |
+|---|---|
+| Containers | Docker, Docker Compose (app + Ollama + Prometheus + Grafana) |
+| Orchestration | Kubernetes — Deployment, Service, PVC, health probes, Ingress |
+| Autoscaling | HorizontalPodAutoscaler — 1–5 replicas based on CPU & memory |
+| GitOps | ArgoCD — auto-syncs `k8s/` to the cluster on every push to `main` |
+| CI/CD | GitHub Actions — lint → test → build → Trivy scan → push to GHCR |
+| Observability | Prometheus metrics, Grafana dashboards (request rate, latency, errors) |
+| Alerting | Prometheus alert rules (app down, high error rate, high latency) + Alertmanager |
+| Security | Trivy image scanning, PBKDF2 password hashing, no secrets in source |
+| IaC | Terraform — AWS ALB + Auto Scaling Group of EC2 instances |
 
 **One-command local setup** (Minikube + local DNS, no port-forwarding):
 ```bash
 ./local-up.sh
 ```
 
+| Service | URL |
+|---|---|
+| App | http://styleai.test |
+| Grafana | http://grafana.test |
+| Prometheus | http://prometheus.test |
+| ArgoCD | https://argocd.test |
+
+See [`ai-search-service/README.md`](./ai-search-service/README.md) for full setup instructions, architecture diagrams, and feature details.
+
+---
+
 ### [Terraform — AWS Deployment](./terraform)
 
-Provisions the same app onto AWS: an Application Load Balancer in front of
-an Auto Scaling Group of EC2 instances, each bootstrapping itself via
-`user_data` (Docker install → clone repo → `docker compose up`).
+Provisions the same application onto AWS: an Application Load Balancer in front of an Auto Scaling Group of EC2 instances, each bootstrapping itself via `user_data` (Docker install → clone repo → `docker compose up`).
 
-See [`terraform/README.md`](./terraform/README.md) for step-by-step deploy
-instructions. ⚠️ Creates real, billable AWS resources — nothing runs
-automatically, and remember to `terraform destroy` when done.
+See [`terraform/README.md`](./terraform/README.md) for step-by-step instructions.
+
+> ⚠️ Creates real, billable AWS resources. Nothing runs automatically — remember to `terraform destroy` when finished.
 
 ---
 
