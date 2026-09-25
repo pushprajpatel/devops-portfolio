@@ -10,7 +10,7 @@ _tmp_dir = tempfile.mkdtemp()
 os.environ["DB_PATH"] = str(Path(_tmp_dir) / "test_products.db")
 os.environ["IMAGE_DIR"] = str(Path(_tmp_dir) / "images")
 
-import db  # noqa: E402
+import db
 
 os.makedirs(os.environ["IMAGE_DIR"], exist_ok=True)
 
@@ -57,9 +57,9 @@ _conn.close()
 
 db.init_users()  # creates the users table and seeds admin/admin — no network
 
-from fastapi.testclient import TestClient  # noqa: E402
+from fastapi.testclient import TestClient
 
-import main  # noqa: E402
+import main
 
 client = TestClient(main.app)
 
