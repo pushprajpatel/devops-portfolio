@@ -32,8 +32,11 @@ spec:
           env:
             - name: OLLAMA_HOST
               value: "http://ollama:11434"
+            # 3b, not 7b: the 7B model needs ~5GB of RAM and gets OOM-killed on an
+            # 8GB Minikube node that also runs the monitoring/tracing stack. It is
+            # CPU-only here, so 3b also answers in ~6-8s instead of 30-60s.
             - name: OLLAMA_MODEL
-              value: "qwen2.5:7b"
+              value: "qwen2.5:3b"
             - name: DB_PATH
               value: "/app/data/products.db"
             - name: IMAGE_DIR

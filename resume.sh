@@ -77,7 +77,7 @@ wait_for ingress-nginx deploy/ingress-nginx-controller "Ingress controller"
 
 # ── 4. Ollama model ───────────────────────────────────────────────────────────
 step "Ollama model"
-MODEL="qwen2.5:7b"
+MODEL="qwen2.5:3b"  # keep in sync with OLLAMA_MODEL in ai-search-service/k8s/app-deployment.yaml
 if kubectl exec deploy/ollama -- ollama list 2>/dev/null | grep -q "$MODEL"; then
   ok "$MODEL present"
 else

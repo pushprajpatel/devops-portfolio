@@ -327,6 +327,7 @@ Admin credentials are seeded from `ADMIN_USERNAME` / `ADMIN_PASSWORD` environmen
 
 ## Known Limitations
 
+- **Smaller model on Minikube** — the Kubernetes manifest runs `qwen2.5:3b` (~2 GB) because the 7B model needs ~5 GB and is OOM-killed on an 8 GB Minikube node next to the monitoring/tracing stack; on CPU it also answers in ~6-8 s instead of 30-60 s. Docker Compose and Terraform keep `qwen2.5:7b` — override with `OLLAMA_MODEL`
 - **In-memory sessions** — session tokens reset on server restart; not suitable for production
 - **Limited catalogue** — 4 colours and 3 categories, constrained by available royalty-free product photography
 - **No real payment processing** — the checkout flow is a UI simulation
