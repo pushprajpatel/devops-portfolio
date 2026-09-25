@@ -85,12 +85,15 @@ fi
 
 # ── 5. Health endpoints (via API-server proxy — works without the tunnel) ─────
 step "Health checks"
-probe() {  # <label> <service:port> <path>
-  if kubectl get --raw "/api/v1/namespaces/default/services/$2/proxy$3" >/dev/null 2>&1; then
-    ok "$1"
-  else
-    fail "$1 not responding"
-  fi
+probe() {  # <label> <service:port> <path> — retries up to ~60s (Grafana takes ~20s to open its port)
+  for _ in $(seq 1 20); do
+    if kubectl get --raw "/api/v1/namespaces/default/services/$2/proxy$3" >/dev/null 2>&1; then
+      ok "$1"
+      return
+    fi
+    sleep 3
+  done
+  fail "$1 not responding"
 }
 probe "App          /health"       app:8000          /health
 probe "Prometheus   /-/ready"      prometheus:9090   /-/ready

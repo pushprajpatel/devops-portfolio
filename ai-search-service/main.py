@@ -25,6 +25,8 @@ SESSIONS = {}
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_URL = f"{OLLAMA_HOST}/api/chat"
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b")
+# CPU-only Ollama (e.g. inside Minikube on a Mac) can take 30-60s per query.
+OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "180"))
 
 SEARCH_TOOL = {
     "type": "function",
@@ -140,7 +142,7 @@ def search(req: SearchRequest):
             "tools": [SEARCH_TOOL],
             "stream": False,
         },
-        timeout=60,
+        timeout=OLLAMA_TIMEOUT,
     )
     response.raise_for_status()
     tool_calls = response.json()["message"].get("tool_calls")
