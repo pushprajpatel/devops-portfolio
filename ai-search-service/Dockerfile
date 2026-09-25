@@ -8,7 +8,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+    # Build tooling isn't needed at runtime, and its vendored copies (pip's msgpack,
+    # setuptools' bundled deps) are what Trivy flags — drop them from the final image.
+    && pip uninstall -y pip setuptools wheel
 
 COPY db.py main.py entrypoint.sh ./
 COPY frontend ./frontend
