@@ -24,6 +24,7 @@ A production-grade e-commerce application powered by a locally-hosted LLM that p
 | GitOps | ArgoCD — auto-syncs `k8s/` to the cluster on every push to `main` |
 | CI/CD | GitHub Actions — lint → test → build → Trivy scan → push to GHCR |
 | Observability | Prometheus metrics, Grafana dashboards (request rate, latency, errors) |
+| Tracing | OpenTelemetry → OTel Collector → Jaeger (FastAPI, LLM call and DB spans) |
 | Alerting | Prometheus alert rules (app down, high error rate, high latency) + Alertmanager |
 | Security | Trivy image scanning, PBKDF2 password hashing, no secrets in source |
 | IaC | Terraform — AWS ALB + Auto Scaling Group of EC2 instances |

@@ -68,6 +68,8 @@ wait_for default  deploy/ollama       "Ollama"
 wait_for default  deploy/prometheus   "Prometheus"
 wait_for default  deploy/alertmanager "Alertmanager"
 wait_for default  deploy/grafana      "Grafana"
+wait_for default  deploy/otel-collector "OTel Collector"
+wait_for default  deploy/jaeger       "Jaeger"
 wait_for argocd   statefulset/argocd-application-controller "ArgoCD application-controller"
 wait_for argocd   deploy/argocd-repo-server "ArgoCD repo-server"
 wait_for argocd   deploy/argocd-server      "ArgoCD server"
@@ -99,6 +101,7 @@ probe "App          /health"       app:8000          /health
 probe "Prometheus   /-/ready"      prometheus:9090   /-/ready
 probe "Alertmanager /-/ready"      alertmanager:9093 /-/ready
 probe "Grafana      /api/health"   grafana:3000      /api/health
+probe "Jaeger UI    /"             jaeger:16686      /
 
 # Prometheus must actually be scraping the app, not merely be up.
 if kubectl get --raw '/api/v1/namespaces/default/services/prometheus:9090/proxy/api/v1/query?query=up%7Bjob%3D%22ai-search-app%22%7D' 2>/dev/null | grep -q '"1"\]'; then
@@ -118,6 +121,14 @@ for h in styleai.test grafana.test prometheus.test argocd.test; do
   grep -q "$h" /etc/hosts && ok "$h" || fail "$h missing in /etc/hosts — run ./local-up.sh once to add it"
 done
 
+# ── 7b. Jaeger UI has no ingress/DNS entry — expose it on localhost ───────────
+if ! lsof -nP -iTCP:16686 -sTCP:LISTEN >/dev/null 2>&1; then
+  nohup kubectl port-forward svc/jaeger 16686:16686 >/dev/null 2>&1 &
+  ok "port-forwarding Jaeger UI → http://localhost:16686"
+else
+  ok "Jaeger UI already on http://localhost:16686"
+fi
+
 # ── 8. Summary ────────────────────────────────────────────────────────────────
 echo
 if ((${#FAILED[@]})); then
@@ -131,6 +142,7 @@ echo -e "
   App         →  ${CYAN}http://styleai.test${NC}
   Grafana     →  ${CYAN}http://grafana.test${NC}   (admin / admin)
   Prometheus  →  ${CYAN}http://prometheus.test${NC}
+  Jaeger      →  ${CYAN}http://localhost:16686${NC}   (traces: pick service "styleai-search")
   ArgoCD      →  ${CYAN}https://argocd.test${NC}   (admin / kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
 "
 

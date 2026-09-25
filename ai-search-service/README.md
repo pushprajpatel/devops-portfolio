@@ -32,6 +32,7 @@ Built as an end-to-end DevOps showcase covering containerisation, Kubernetes orc
 - **Resource-governed pods** — CPU and memory requests/limits defined on every container to enable reliable scheduling and HPA
 - **GitOps via ArgoCD** — any push to `k8s/` on `main` is automatically reconciled to the cluster; no manual `kubectl apply` required
 - **Observability** — Prometheus scrapes `/metrics` every 15 s; a custom Grafana dashboard visualises request rate, p50/p95/p99 latency, and error rate per endpoint
+- **Distributed tracing** — OpenTelemetry traces (FastAPI, the Ollama call, SQLite, plus custom `llm.parse_query` / `db.run_query` spans) flow through an OTel Collector into Jaeger
 - **Alerting** — three Prometheus alerting rules (app down, high error rate, high latency) wired to Alertmanager for notification routing
 - **CI/CD pipeline** — GitHub Actions runs lint → test → build → security scan → publish on every push to `main`; images are tagged with `:latest` and `:<git-sha>` and published to GitHub Container Registry (GHCR)
 
@@ -87,6 +88,7 @@ CI/CD
 | Orchestration | Kubernetes — Deployment, Service, PVC, HPA, Ingress; validated on Minikube |
 | GitOps / CD | ArgoCD — auto-syncs `k8s/` on every push to `main` |
 | Observability | Prometheus, Grafana, Alertmanager; `/metrics` via `prometheus-fastapi-instrumentator` |
+| Tracing | OpenTelemetry (SDK + auto-instrumentation) → OTel Collector → Jaeger |
 | CI/CD | GitHub Actions — lint → test → build → Trivy scan → push to GHCR |
 | Image registry | GitHub Container Registry (GHCR) — tagged `:latest` + `:<git-sha>` |
 | Testing | pytest, FastAPI `TestClient` |
@@ -258,6 +260,24 @@ Alerts are routed through **Alertmanager** (`:9093`), which is pre-configured an
 - Latency p50, p95, and p99
 - In-progress requests
 - Error rate (4xx + 5xx)
+
+### Distributed tracing (OpenTelemetry)
+
+```
+app --OTLP/HTTP :4318--> otel-collector --OTLP/gRPC :4317--> jaeger (UI :16686)
+```
+
+The app is instrumented in `telemetry.py`: FastAPI requests, outgoing `requests` calls (the Ollama request) and SQLite queries are traced automatically, and `/search` adds two custom spans — `llm.parse_query` (model, tool called, extracted filters) and `db.run_query` (result count). `/health` and `/metrics` are excluded so probes don't drown out real traffic.
+
+Tracing is **off unless `OTEL_EXPORTER_OTLP_ENDPOINT` is set** (the Kubernetes manifest sets it to `http://otel-collector:4318`), so local runs and the test suite need no collector. Jaeger keeps traces in memory — they are lost when its pod restarts.
+
+Open the UI and pick the `styleai-search` service:
+```bash
+kubectl port-forward svc/jaeger 16686:16686   # → http://localhost:16686
+```
+A slow `/search` will show the time split between the LLM call and the database query.
+
+> Grafana's built-in Jaeger datasource speaks the Jaeger v1 query API, which Jaeger v2 no longer serves, so traces are viewed in the Jaeger UI rather than Grafana.
 
 ---
 

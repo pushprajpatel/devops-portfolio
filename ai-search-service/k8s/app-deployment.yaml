@@ -38,6 +38,10 @@ spec:
               value: "/app/data/products.db"
             - name: IMAGE_DIR
               value: "/app/data/images"
+            - name: OTEL_SERVICE_NAME
+              value: "styleai-search"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://otel-collector:4318"
           resources:
             requests:
               cpu: "250m"

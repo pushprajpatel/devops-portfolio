@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
     # setuptools' bundled deps) are what Trivy flags — drop them from the final image.
     && pip uninstall -y pip setuptools wheel
 
-COPY db.py main.py entrypoint.sh ./
+COPY db.py main.py telemetry.py entrypoint.sh ./
 COPY frontend ./frontend
 RUN chmod +x entrypoint.sh
 

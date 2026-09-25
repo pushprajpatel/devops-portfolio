@@ -4,15 +4,19 @@ import secrets
 import requests
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
+from opentelemetry import trace
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel
 
+import telemetry
 from db import get_connection, hash_password, init_users
 
 IMAGE_DIR = os.environ.get("IMAGE_DIR", "static/images")
 
 app = FastAPI(title="AI Search Service")
 Instrumentator().instrument(app).expose(app)
+telemetry.setup(app)
+tracer = trace.get_tracer("styleai.search")
 app.mount("/images", StaticFiles(directory=IMAGE_DIR), name="images")
 
 init_users()
@@ -125,29 +129,37 @@ def run_query(filters: dict):
 
 @app.post("/search")
 def search(req: SearchRequest):
-    response = requests.post(
-        OLLAMA_URL,
-        json={
-            "model": OLLAMA_MODEL,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": (
-                        "You must always call the search_products tool to answer, "
-                        "even for vague or single-word queries. Never reply with plain text."
-                    ),
-                },
-                {"role": "user", "content": req.query},
-            ],
-            "tools": [SEARCH_TOOL],
-            "stream": False,
-        },
-        timeout=OLLAMA_TIMEOUT,
-    )
-    response.raise_for_status()
-    tool_calls = response.json()["message"].get("tool_calls")
-    filters = tool_calls[0]["function"]["arguments"] if tool_calls else {}
-    results = run_query(filters)
+    with tracer.start_as_current_span("llm.parse_query") as span:
+        span.set_attribute("llm.model", OLLAMA_MODEL)
+        span.set_attribute("search.query_length", len(req.query))
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "messages": [
+                    {
+                        "role": "system",
+                        "content": (
+                            "You must always call the search_products tool to answer, "
+                            "even for vague or single-word queries. Never reply with plain text."
+                        ),
+                    },
+                    {"role": "user", "content": req.query},
+                ],
+                "tools": [SEARCH_TOOL],
+                "stream": False,
+            },
+            timeout=OLLAMA_TIMEOUT,
+        )
+        response.raise_for_status()
+        tool_calls = response.json()["message"].get("tool_calls")
+        filters = tool_calls[0]["function"]["arguments"] if tool_calls else {}
+        span.set_attribute("search.filters", ",".join(sorted(filters)))
+        span.set_attribute("llm.tool_called", bool(tool_calls))
+
+    with tracer.start_as_current_span("db.run_query") as span:
+        results = run_query(filters)
+        span.set_attribute("search.result_count", len(results))
 
     return {
         "query": req.query,
